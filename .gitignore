@@ -1,0 +1,51 @@
+# Python
+*.py[cod]
+__pycache__/
+*.pyo
+*.pyd
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environment
+leadforge_env/
+.venv/
+venv/
+env/
+
+# Reflex
+.web/
+.states/
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+
+# Uploads / user data
+uploaded_files/
+assets/external/
+
+# Environment / secrets
+.env
+.env.*
+config/local_settings.py
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*~
+
+# Stitch (internal tooling)
+stitch/

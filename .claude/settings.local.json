@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip show:*)",
+      "Bash(python -c \"import reflex; print\\(reflex.__version__\\)\")",
+      "Bash(grep:*)",
+      "Bash(kill 45274)",
+      "Bash(file /home/rmrobot/Desktop/Rajesh/LeadForgeAI_Reflex/stitch/lead_generation/*)",
+      "Bash(curl -s http://localhost:11434/api/tags)",
+      "Bash(curl:*)",
+      "Bash(python3:*)",
+      "Bash(pip3 show:*)"
+    ]
+  }
+}

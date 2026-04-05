@@ -1,0 +1,19 @@
+# ── Reflex UI framework ────────────────────────────────────────────────────────
+reflex>=0.6.0
+
+# ── Agent orchestration ────────────────────────────────────────────────────────
+langgraph>=0.1.0
+
+# ── Web search ────────────────────────────────────────────────────────────────
+ddgs>=0.1.0          # DuckDuckGo (free, no key)
+
+# ── Web scraping ──────────────────────────────────────────────────────────────
+playwright>=1.44.0   # Headless Chromium (Google Maps, Bing, pages)
+beautifulsoup4>=4.12.0
+
+# ── HTTP clients (paid search providers + Ollama) ────────────────────────────
+requests>=2.31.0
+httpx>=0.27.0
+
+# ── Data processing & export ──────────────────────────────────────────────────
+pandas>=2.0.0
