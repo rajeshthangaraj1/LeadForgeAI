@@ -51,8 +51,9 @@ Thumbs.db
 # Stitch (internal tooling)
 stitch/
 
-# Memory / session files
+# Claude Code (session memory, project instructions)
 .claude/
+CLAUDE.md
 
 # Pytest / coverage
 .pytest_cache/
