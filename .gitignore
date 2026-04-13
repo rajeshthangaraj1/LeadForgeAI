@@ -55,6 +55,9 @@ stitch/
 .claude/
 CLAUDE.md
 
+# Social / marketing content
+linkedin_post.txt
+
 # Pytest / coverage
 .pytest_cache/
 .coverage
