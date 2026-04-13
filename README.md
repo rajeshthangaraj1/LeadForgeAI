@@ -44,8 +44,8 @@ reflex run
 
 App runs at `http://localhost:3000`
 
-**Login:** `admin` / `admin`
-*(Change in `config/settings.py` → `APP_USERNAME` / `APP_PASSWORD`)*
+**Login:** Register an account at `/register`. A default `admin` account is created on first run.
+Authentication is handled entirely via the database — no credentials in config files.
 
 ---
 
@@ -58,7 +58,8 @@ LeadForgeAI/
 ├── requirements.txt
 ├── README.md
 ├── PRODUCT_OVERVIEW.md                Team-facing product document
-├── leadforge.db                       SQLite database (auto-created)
+├── db/
+│   └── leadforge.db                   SQLite database (auto-created, not in git)
 │
 ├── leadforge_ui/                      Reflex frontend application
 │   ├── leadforge_ui.py                App entry point — registers all pages
@@ -222,7 +223,8 @@ Leads Dashboard
 
 | Table | Purpose |
 |---|---|
-| `company_profile` | Company details |
+| `users` | User accounts (PBKDF2 hashed passwords) |
+| `company_profile` | Company details (per user) |
 | `products` | Multiple products per company |
 | `target_audience` | Target config per product |
 | `leads` | All leads (name, company, role, email, phone, linkedin, score, stage, notes) |
@@ -252,10 +254,9 @@ SCRAPER_HARD_TIMEOUT_SEC = 20              # asyncio.wait_for timeout (s)
 MAX_PAGE_TEXT_CHARS     = 3000             # text extracted per page
 
 ENRICH_BATCH_SIZE       = 5                # leads per enrichment LLM call
-
-APP_USERNAME            = "admin"
-APP_PASSWORD            = "admin"
 ```
+
+> **Note:** Login credentials are stored in the database only (`db/leadforge.db`). There are no credentials in config files.
 
 **Changing the Ollama model** — edit `OLLAMA_MODEL` in `config/settings.py` only. Every agent uses this setting automatically.
 

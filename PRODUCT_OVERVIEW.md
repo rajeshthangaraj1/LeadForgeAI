@@ -134,6 +134,15 @@ The whole run typically takes 5–15 minutes depending on the number of URLs and
 - Reply rate % calculated and displayed
 - Full send history per campaign
 
+### Multi-user / Multi-tenant (Complete)
+
+- Any number of users can register independently
+- Each user has a completely separate company profile, products, leads, campaigns, templates, Gmail config, and pipeline history
+- No data is ever shared between accounts
+- Passwords stored as PBKDF2-HMAC-SHA256 hashes — no plaintext credentials anywhere
+
+---
+
 ### Phase 3: Lead Management (Complete)
 
 **Pipeline Stages**
@@ -217,7 +226,7 @@ The AI model runs locally via **Ollama**. Default model: `qwen3:8b`. No data lea
 ### Lower Priority
 - **Google Sheets export:** Direct sync instead of CSV download.
 - **REST API:** Allow other tools or scripts to trigger pipeline runs or fetch leads programmatically.
-- **Multi-user access:** Role-based login (admin vs read-only viewer).
+- **Role-based access:** Admin vs read-only viewer roles within a multi-user account (multi-user login with full data isolation is already implemented).
 
 ---
 
@@ -243,7 +252,9 @@ reflex run
 ```
 
 Open browser at `http://localhost:3000`
-Login: `admin` / `admin`
+
+**First login:** Register an account at `/register` or use the default `admin` account created on first run.
+Each registered user has completely isolated data — their own company profile, products, leads, campaigns, and pipeline history.
 
 **First-time setup in the app:**
 1. Go to Masters → Company Profile → add your company and products
@@ -261,13 +272,13 @@ Login: `admin` / `admin`
 | `leadforge_ui/leadforge_ui.py` | App entry point — registers all pages |
 | `leadforge_ui/pages/` | One file per page/route |
 | `leadforge_ui/state/` | One rx.State class per page — all event handlers and DB calls |
-| `config/settings.py` | Change model name, timeouts, login credentials here |
+| `config/settings.py` | Change model name, timeouts, and pipeline limits here |
 | `database/sqlite_db.py` | All database tables, queries, and seed data |
 | `agents/` | One file per pipeline agent |
 | `graph/agent_graph.py` | The pipeline wiring (which agent runs after which) |
 | `utils/llm_utils.py` | How we call Ollama — shared by all agents |
 | `utils/email_utils.py` | Gmail send + IMAP reply fetch logic |
-| `leadforge.db` | The SQLite database — not committed to git |
+| `db/leadforge.db` | The SQLite database — not committed to git |
 
 ---
 

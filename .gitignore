@@ -20,6 +20,7 @@ env/
 .states/
 
 # Database
+db/
 *.db
 *.db-shm
 *.db-wal
@@ -49,3 +50,11 @@ Thumbs.db
 
 # Stitch (internal tooling)
 stitch/
+
+# Memory / session files
+.claude/
+
+# Pytest / coverage
+.pytest_cache/
+.coverage
+htmlcov/
