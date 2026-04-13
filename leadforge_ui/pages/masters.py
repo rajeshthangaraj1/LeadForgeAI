@@ -1,6 +1,7 @@
 import reflex as rx
 from leadforge_ui.components.layout import layout
 from leadforge_ui.state.auth import AuthState
+from leadforge_ui.state.base_state import AppState
 from leadforge_ui.state.masters_state import MastersState
 from leadforge_ui.styles.theme import PRIMARY, PRIMARY_DARK, BORDER, TD_STYLE, CARD_STYLE
 
@@ -135,7 +136,7 @@ def add_product_modal() -> rx.Component:
                 on_submit=MastersState.add_product,
                 width="100%",
             ),
-            max_width="440px", padding="32px",
+            max_width="440px", width="100%", padding="24px",
         ),
         open=MastersState.show_add_product_modal,
         on_open_change=MastersState.set_show_add_product_modal,
@@ -174,7 +175,7 @@ def edit_product_modal() -> rx.Component:
                 on_submit=MastersState.save_edit_product,
                 width="100%",
             ),
-            max_width="440px", padding="32px",
+            max_width="440px", width="100%", padding="24px",
         ),
         open=MastersState.show_edit_product_modal,
         on_open_change=MastersState.set_show_edit_product_modal,
@@ -334,7 +335,7 @@ def add_ta_modal() -> rx.Component:
                 on_submit=MastersState.add_ta,
                 width="100%",
             ),
-            max_width="600px", padding="32px",
+            max_width="600px", width="100%", padding="24px",
         ),
         open=MastersState.show_add_ta_modal,
         on_open_change=MastersState.set_show_add_ta_modal,
@@ -362,7 +363,7 @@ def edit_ta_modal() -> rx.Component:
                 on_submit=MastersState.save_edit_ta,
                 width="100%",
             ),
-            max_width="600px", padding="32px",
+            max_width="600px", width="100%", padding="24px",
         ),
         open=MastersState.show_edit_ta_modal,
         on_open_change=MastersState.set_show_edit_ta_modal,
@@ -555,7 +556,7 @@ def _template_modal_form(
                 on_submit=on_submit,
                 width="100%",
             ),
-            max_width="560px", padding="32px",
+            max_width="560px", width="100%", padding="24px",
         ),
         open=open_var,
         on_open_change=on_open,
@@ -664,7 +665,7 @@ def _cs_modal(title, country_val, btype_val, url_val, on_submit, open_var, on_op
                 on_submit=on_submit,
                 width="100%",
             ),
-            max_width="480px", padding="32px",
+            max_width="480px", width="100%", padding="24px",
         ),
         open=open_var,
         on_open_change=on_open,
@@ -817,7 +818,7 @@ def masters_content() -> rx.Component:
 
 @rx.page(
     route="/masters",
-    on_load=[AuthState.check_auth, MastersState.load_masters],
+    on_load=[AuthState.check_auth, AppState.load_products, MastersState.load_masters],
 )
 def masters():
     return layout(

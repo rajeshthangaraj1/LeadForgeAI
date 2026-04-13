@@ -2,6 +2,7 @@ import reflex as rx
 from leadforge_ui.components.layout import layout
 from leadforge_ui.components.cards import info_card
 from leadforge_ui.state.auth import AuthState
+from leadforge_ui.state.base_state import AppState
 from leadforge_ui.state.lead_generator_state import LeadGeneratorState
 from leadforge_ui.styles.theme import PRIMARY, PRIMARY_DARK, BORDER, CARD_STYLE, SUCCESS, ERROR
 
@@ -380,7 +381,7 @@ def lead_generator_content() -> rx.Component:
 
 @rx.page(
     route="/lead-generator",
-    on_load=[AuthState.check_auth, LeadGeneratorState.load_page],
+    on_load=[AuthState.check_auth, AppState.load_products, LeadGeneratorState.load_page],
 )
 def lead_generator():
     return layout(

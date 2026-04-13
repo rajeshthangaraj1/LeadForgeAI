@@ -4,6 +4,7 @@ from typing import TypedDict
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
+from leadforge_ui.state.auth import AuthState
 from database.sqlite_db import (
     get_email_campaigns,
     get_email_templates,
@@ -85,7 +86,7 @@ def _normalize_campaign(c: dict) -> CampaignDict:
     }
 
 
-class CampaignsState(rx.State):
+class CampaignsState(AuthState):
     """CRUD + send logic for Email Campaigns."""
 
     campaigns: list[CampaignDict] = []
@@ -132,9 +133,9 @@ class CampaignsState(rx.State):
     # ── Load ───────────────────────────────────────────────────────────────────
 
     def load_campaigns(self):
-        raw = get_email_campaigns()
+        raw = get_email_campaigns(self.user_id)
         self.campaigns = [_normalize_campaign(c) for c in raw]
-        raw_templates = get_email_templates()
+        raw_templates = get_email_templates(self.user_id)
         self.templates = [
             {
                 "id": int(t.get("id") or 0),
@@ -145,7 +146,7 @@ class CampaignsState(rx.State):
             }
             for t in raw_templates
         ]
-        profile = get_company_profile()
+        profile = get_company_profile(self.user_id)
         if profile:
             raw_prods = get_products(profile["id"])
             self.products = [
@@ -187,7 +188,7 @@ class CampaignsState(rx.State):
         prod = next((p for p in self.products if p["product_name"] == prod_name), None)
         product_id = prod["id"] if prod else None
 
-        create_email_campaign(name, template_id, product_id)
+        create_email_campaign(name, template_id, product_id, user_id=self.user_id)
         self.show_create_modal = False
         self.load_campaigns()
         return rx.toast.success("Campaign created.")
@@ -279,15 +280,15 @@ class CampaignsState(rx.State):
         async with self:
             self.sending = True
             self.send_progress = 0
+            _uid = self.user_id
+            camp = next((c for c in self.campaigns if c["id"] == campaign_id), None)
 
-        gmail = get_gmail_config()
+        gmail = get_gmail_config(_uid)
         if not gmail:
             async with self:
                 self.sending = False
             return rx.toast.error("Configure Gmail in Settings first.")
 
-        async with self:
-            camp = next((c for c in self.campaigns if c["id"] == campaign_id), None)
         if not camp:
             async with self:
                 self.sending = False
@@ -301,6 +302,7 @@ class CampaignsState(rx.State):
 
         leads = get_leads_for_campaign(
             product_id=camp["product_id"] or None,
+            user_id=_uid,
             only_with_email=True,
         )
 
@@ -341,9 +343,10 @@ class CampaignsState(rx.State):
         async with self:
             self.checking_replies = True
             self.reply_check_result = ""
+            _uid = self.user_id
 
         try:
-            gmail = get_gmail_config()
+            gmail = get_gmail_config(_uid)
             if not gmail:
                 async with self:
                     self.checking_replies = False

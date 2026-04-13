@@ -3,6 +3,7 @@ from typing import TypedDict
 from leadforge_ui.components.layout import layout
 from leadforge_ui.components.cards import stat_card, info_card
 from leadforge_ui.state.auth import AuthState
+from leadforge_ui.state.base_state import AppState
 from leadforge_ui.styles.theme import PRIMARY, SUCCESS, WARNING, CARD_STYLE, BORDER
 from collections import Counter
 
@@ -26,7 +27,7 @@ class CampaignRate(TypedDict):
     pct_str: str
 
 
-class AnalyticsState(rx.State):
+class AnalyticsState(AuthState):
     """Analytics page state — chart data derived from leads + sends."""
 
     # Leads by industry
@@ -49,7 +50,7 @@ class AnalyticsState(rx.State):
 
     def load_analytics(self):
         from database.sqlite_db import get_all_leads, get_all_sends, get_email_campaigns, get_campaign_analytics
-        leads = get_all_leads()
+        leads = get_all_leads(user_id=self.user_id)
         self.total_leads = len(leads)
 
         # Industry chart (top 12) — pct_str precomputed
@@ -71,7 +72,7 @@ class AnalyticsState(rx.State):
         ]
 
         # Email sends
-        sends = get_all_sends()
+        sends = get_all_sends(self.user_id)
         self.total_emails = len(sends)
         replies = sum(1 for s in sends if s.get("status") in ("replied", "auto_reply"))
         self.total_replies = replies
@@ -91,7 +92,7 @@ class AnalyticsState(rx.State):
         ]
 
         # Campaign reply rates — pct_str and rate_str precomputed
-        campaigns = get_email_campaigns()
+        campaigns = get_email_campaigns(self.user_id)
         rates = []
         for c in campaigns[:8]:
             rate = get_campaign_analytics(c["id"])["reply_rate"]
@@ -237,7 +238,7 @@ def analytics_content() -> rx.Component:
 
 @rx.page(
     route="/analytics",
-    on_load=[AuthState.check_auth, AnalyticsState.load_analytics],
+    on_load=[AuthState.check_auth, AppState.load_products, AnalyticsState.load_analytics],
 )
 def analytics():
     return layout(

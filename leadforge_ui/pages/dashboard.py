@@ -2,6 +2,7 @@ import reflex as rx
 from leadforge_ui.components.layout import layout
 from leadforge_ui.components.cards import stat_card, info_card
 from leadforge_ui.state.auth import AuthState
+from leadforge_ui.state.base_state import AppState
 from leadforge_ui.state.dashboard_state import DashboardState
 from leadforge_ui.styles.theme import PRIMARY, SUCCESS, WARNING, INFO, CARD_STYLE, BORDER
 
@@ -146,7 +147,7 @@ def dashboard_content() -> rx.Component:
 
 @rx.page(
     route="/dashboard",
-    on_load=[AuthState.check_auth, DashboardState.load_dashboard],
+    on_load=[AuthState.check_auth, AppState.load_products, DashboardState.load_dashboard],
 )
 def dashboard():
     return layout(

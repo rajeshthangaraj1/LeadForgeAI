@@ -9,12 +9,12 @@ from database.sqlite_db import create_agent_run, log_agent_step, clear_leads
 from graph.agent_graph import get_graph
 
 
-def run_pipeline(product_id: int, mode: str = "start") -> dict:
+def run_pipeline(product_id: int, mode: str = "start", user_id: int = 0) -> dict:
     # 'start' clears old leads for this product; 'rerun' keeps them
     if mode == "start":
         clear_leads(product_id=product_id)
 
-    run_id = create_agent_run(product_id=product_id, mode=mode)
+    run_id = create_agent_run(product_id=product_id, mode=mode, user_id=user_id)
     log_agent_step(
         run_id, "Pipeline",
         f"Starting LeadForge AI pipeline (run_id={run_id}, product_id={product_id}, mode={mode})."

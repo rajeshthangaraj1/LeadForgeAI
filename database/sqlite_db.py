@@ -2,7 +2,9 @@ import sqlite3
 import os
 from datetime import datetime
 
-DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "leadforge.db")
+_DB_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "db")
+os.makedirs(_DB_DIR, exist_ok=True)
+DB_PATH = os.path.join(_DB_DIR, "leadforge.db")
 
 
 def get_connection():
@@ -167,6 +169,13 @@ def init_db():
     # Phase 4: track which pipeline run created each lead
     _safe_add_column(cursor, "leads", "run_id", "INTEGER")
 
+    # ── Multi-tenancy: user_id on all tenant-scoped tables ─────────────────
+    _safe_add_column(cursor, "company_profile",  "user_id", "INTEGER")
+    _safe_add_column(cursor, "email_templates",  "user_id", "INTEGER")
+    _safe_add_column(cursor, "gmail_config",     "user_id", "INTEGER")
+    _safe_add_column(cursor, "email_campaigns",  "user_id", "INTEGER")
+    _safe_add_column(cursor, "agent_runs",       "user_id", "INTEGER")
+
     # ── Users table ─────────────────────────────────────────────────────────
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
@@ -185,6 +194,7 @@ def init_db():
     _seed_country_sources(conn)
     _seed_search_providers(conn)
     _seed_admin_user(conn)
+    _migrate_to_user_scoped(conn)
     conn.close()
 
 
@@ -194,6 +204,20 @@ def _safe_add_column(cursor, table: str, column: str, definition: str):
         cursor.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
     except Exception:
         pass  # column already exists — ignore
+
+
+def _migrate_to_user_scoped(conn):
+    """Assign existing data (user_id IS NULL) to the admin user so nothing is lost."""
+    row = conn.execute("SELECT id FROM users WHERE username='admin' LIMIT 1").fetchone()
+    if not row:
+        return
+    admin_id = row["id"]
+    for table in ("company_profile", "email_templates", "gmail_config", "email_campaigns", "agent_runs"):
+        conn.execute(
+            f"UPDATE {table} SET user_id=? WHERE user_id IS NULL",
+            (admin_id,),
+        )
+    conn.commit()
 
 
 # ── Country Sources Seed Data ─────────────────────────────────────────────────
@@ -474,22 +498,25 @@ def clear_provider_api_key(provider_id: int):
 
 # ── Company Profile ──────────────────────────────────────────────────────────
 
-def save_company_profile(data: dict):
+def save_company_profile(data: dict, user_id: int = 0):
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute("DELETE FROM company_profile")
+    cursor.execute("DELETE FROM company_profile WHERE user_id=?", (user_id,))
     cursor.execute(
-        """INSERT INTO company_profile (company_name, industry, website, description)
-           VALUES (:company_name, :industry, :website, :description)""",
-        data,
+        """INSERT INTO company_profile (company_name, industry, website, description, user_id)
+           VALUES (:company_name, :industry, :website, :description, :user_id)""",
+        {**data, "user_id": user_id},
     )
     conn.commit()
     conn.close()
 
 
-def get_company_profile() -> dict | None:
+def get_company_profile(user_id: int = 0) -> dict | None:
     conn = get_connection()
-    row = conn.execute("SELECT * FROM company_profile ORDER BY id DESC LIMIT 1").fetchone()
+    row = conn.execute(
+        "SELECT * FROM company_profile WHERE user_id=? ORDER BY id DESC LIMIT 1",
+        (user_id,),
+    ).fetchone()
     conn.close()
     return dict(row) if row else None
 
@@ -697,11 +724,20 @@ def get_campaign_analytics(campaign_id: int) -> dict:
     }
 
 
-def get_all_leads(product_id: int = None) -> list[dict]:
+def get_all_leads(product_id: int = None, user_id: int = 0) -> list[dict]:
     conn = get_connection()
     if product_id:
         rows = conn.execute(
             "SELECT * FROM leads WHERE product_id=? ORDER BY created_at DESC", (product_id,)
+        ).fetchall()
+    elif user_id:
+        rows = conn.execute(
+            """SELECT l.* FROM leads l
+               JOIN products p ON l.product_id = p.id
+               JOIN company_profile cp ON p.company_profile_id = cp.id
+               WHERE cp.user_id = ?
+               ORDER BY l.created_at DESC""",
+            (user_id,),
         ).fetchall()
     else:
         rows = conn.execute("SELECT * FROM leads ORDER BY created_at DESC").fetchall()
@@ -721,12 +757,12 @@ def clear_leads(product_id: int = None):
 
 # ── Agent Runs ───────────────────────────────────────────────────────────────
 
-def create_agent_run(product_id: int, mode: str = "start") -> int:
+def create_agent_run(product_id: int, mode: str = "start", user_id: int = 0) -> int:
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute(
-        "INSERT INTO agent_runs (product_id, run_time, mode, status, leads_found, notes) VALUES (?, ?, ?, 'running', 0, '')",
-        (product_id, datetime.now().isoformat(), mode),
+        "INSERT INTO agent_runs (product_id, run_time, mode, status, leads_found, notes, user_id) VALUES (?, ?, ?, 'running', 0, '', ?)",
+        (product_id, datetime.now().isoformat(), mode, user_id),
     )
     run_id = cursor.lastrowid
     conn.commit()
@@ -744,11 +780,20 @@ def update_agent_run(run_id: int, status: str, leads_found: int, notes: str = ""
     conn.close()
 
 
-def get_agent_runs(product_id: int = None) -> list[dict]:
+def get_agent_runs(product_id: int = None, user_id: int = 0) -> list[dict]:
     conn = get_connection()
-    if product_id:
+    if product_id and user_id:
+        rows = conn.execute(
+            "SELECT * FROM agent_runs WHERE product_id=? AND user_id=? ORDER BY id DESC",
+            (product_id, user_id),
+        ).fetchall()
+    elif product_id:
         rows = conn.execute(
             "SELECT * FROM agent_runs WHERE product_id=? ORDER BY id DESC", (product_id,)
+        ).fetchall()
+    elif user_id:
+        rows = conn.execute(
+            "SELECT * FROM agent_runs WHERE user_id=? ORDER BY id DESC", (user_id,)
         ).fetchall()
     else:
         rows = conn.execute("SELECT * FROM agent_runs ORDER BY id DESC").fetchall()
@@ -814,27 +859,29 @@ def clear_agent_logs():
 
 # ── Gmail Config ──────────────────────────────────────────────────────────────
 
-def save_gmail_config(email: str, app_password: str):
+def save_gmail_config(email: str, app_password: str, user_id: int = 0):
     conn = get_connection()
-    conn.execute("DELETE FROM gmail_config")
+    conn.execute("DELETE FROM gmail_config WHERE user_id=?", (user_id,))
     conn.execute(
-        "INSERT INTO gmail_config (email, app_password) VALUES (?, ?)",
-        (email, app_password),
+        "INSERT INTO gmail_config (email, app_password, user_id) VALUES (?, ?, ?)",
+        (email, app_password, user_id),
     )
     conn.commit()
     conn.close()
 
 
-def get_gmail_config() -> dict | None:
+def get_gmail_config(user_id: int = 0) -> dict | None:
     conn = get_connection()
-    row = conn.execute("SELECT * FROM gmail_config LIMIT 1").fetchone()
+    row = conn.execute(
+        "SELECT * FROM gmail_config WHERE user_id=? LIMIT 1", (user_id,)
+    ).fetchone()
     conn.close()
     return dict(row) if row else None
 
 
 # ── Email Templates ───────────────────────────────────────────────────────────
 
-def save_email_template(name: str, subject: str, body: str, template_id: int = None) -> int:
+def save_email_template(name: str, subject: str, body: str, template_id: int = None, user_id: int = 0) -> int:
     conn = get_connection()
     if template_id:
         conn.execute(
@@ -846,8 +893,8 @@ def save_email_template(name: str, subject: str, body: str, template_id: int = N
         return template_id
     else:
         cur = conn.execute(
-            "INSERT INTO email_templates (name, subject, body) VALUES (?, ?, ?)",
-            (name, subject, body),
+            "INSERT INTO email_templates (name, subject, body, user_id) VALUES (?, ?, ?, ?)",
+            (name, subject, body, user_id),
         )
         conn.commit()
         new_id = cur.lastrowid
@@ -855,9 +902,14 @@ def save_email_template(name: str, subject: str, body: str, template_id: int = N
         return new_id
 
 
-def get_email_templates() -> list[dict]:
+def get_email_templates(user_id: int = 0) -> list[dict]:
     conn = get_connection()
-    rows = conn.execute("SELECT * FROM email_templates ORDER BY id DESC").fetchall()
+    if user_id:
+        rows = conn.execute(
+            "SELECT * FROM email_templates WHERE user_id=? ORDER BY id DESC", (user_id,)
+        ).fetchall()
+    else:
+        rows = conn.execute("SELECT * FROM email_templates ORDER BY id DESC").fetchall()
     conn.close()
     return [dict(r) for r in rows]
 
@@ -878,11 +930,11 @@ def delete_email_template(template_id: int):
 
 # ── Email Campaigns ───────────────────────────────────────────────────────────
 
-def create_email_campaign(name: str, template_id: int, product_id: int = None) -> int:
+def create_email_campaign(name: str, template_id: int, product_id: int = None, user_id: int = 0) -> int:
     conn = get_connection()
     cur = conn.execute(
-        "INSERT INTO email_campaigns (name, template_id, product_id, status) VALUES (?, ?, ?, 'draft')",
-        (name, template_id, product_id),
+        "INSERT INTO email_campaigns (name, template_id, product_id, status, user_id) VALUES (?, ?, ?, 'draft', ?)",
+        (name, template_id, product_id, user_id),
     )
     conn.commit()
     new_id = cur.lastrowid
@@ -890,14 +942,23 @@ def create_email_campaign(name: str, template_id: int, product_id: int = None) -
     return new_id
 
 
-def get_email_campaigns() -> list[dict]:
+def get_email_campaigns(user_id: int = 0) -> list[dict]:
     conn = get_connection()
-    rows = conn.execute("""
-        SELECT c.*, t.name as template_name
-        FROM email_campaigns c
-        LEFT JOIN email_templates t ON c.template_id = t.id
-        ORDER BY c.id DESC
-    """).fetchall()
+    if user_id:
+        rows = conn.execute("""
+            SELECT c.*, t.name as template_name
+            FROM email_campaigns c
+            LEFT JOIN email_templates t ON c.template_id = t.id
+            WHERE c.user_id = ?
+            ORDER BY c.id DESC
+        """, (user_id,)).fetchall()
+    else:
+        rows = conn.execute("""
+            SELECT c.*, t.name as template_name
+            FROM email_campaigns c
+            LEFT JOIN email_templates t ON c.template_id = t.id
+            ORDER BY c.id DESC
+        """).fetchall()
     conn.close()
     return [dict(r) for r in rows]
 
@@ -983,31 +1044,51 @@ def mark_lead_emailed(lead_id: int):
     conn.close()
 
 
-def get_leads_for_campaign(product_id: int = None, only_with_email: bool = True) -> list[dict]:
-    """Return leads eligible for emailing — optionally filtered by product."""
-    conn   = get_connection()
-    query  = "SELECT * FROM leads WHERE 1=1"
-    params = []
-    if only_with_email:
-        query += " AND email != '' AND email IS NOT NULL"
-    if product_id:
-        query += " AND product_id = ?"
-        params.append(product_id)
-    query += " ORDER BY id DESC"
+def get_leads_for_campaign(product_id: int = None, user_id: int = 0, only_with_email: bool = True) -> list[dict]:
+    """Return leads eligible for emailing — filtered by product or user."""
+    conn = get_connection()
+    if user_id and not product_id:
+        query = """SELECT l.* FROM leads l
+                   JOIN products p ON l.product_id = p.id
+                   JOIN company_profile cp ON p.company_profile_id = cp.id
+                   WHERE cp.user_id = ?"""
+        params: list = [user_id]
+        if only_with_email:
+            query += " AND l.email != '' AND l.email IS NOT NULL"
+        query += " ORDER BY l.id DESC"
+    else:
+        query = "SELECT * FROM leads WHERE 1=1"
+        params = []
+        if only_with_email:
+            query += " AND email != '' AND email IS NOT NULL"
+        if product_id:
+            query += " AND product_id = ?"
+            params.append(product_id)
+        query += " ORDER BY id DESC"
     rows = conn.execute(query, params).fetchall()
     conn.close()
     return [dict(r) for r in rows]
 
 
-def get_all_sends() -> list[dict]:
+def get_all_sends(user_id: int = 0) -> list[dict]:
     conn = get_connection()
-    rows = conn.execute("""
-        SELECT s.*, l.name as lead_name, l.company, c.name as campaign_name
-        FROM email_sends s
-        LEFT JOIN leads l ON s.lead_id = l.id
-        LEFT JOIN email_campaigns c ON s.campaign_id = c.id
-        ORDER BY s.id DESC
-    """).fetchall()
+    if user_id:
+        rows = conn.execute("""
+            SELECT s.*, l.name as lead_name, l.company, c.name as campaign_name
+            FROM email_sends s
+            LEFT JOIN leads l ON s.lead_id = l.id
+            LEFT JOIN email_campaigns c ON s.campaign_id = c.id
+            WHERE c.user_id = ?
+            ORDER BY s.id DESC
+        """, (user_id,)).fetchall()
+    else:
+        rows = conn.execute("""
+            SELECT s.*, l.name as lead_name, l.company, c.name as campaign_name
+            FROM email_sends s
+            LEFT JOIN leads l ON s.lead_id = l.id
+            LEFT JOIN email_campaigns c ON s.campaign_id = c.id
+            ORDER BY s.id DESC
+        """).fetchall()
     conn.close()
     return [dict(r) for r in rows]
 

@@ -4,6 +4,7 @@ from typing import TypedDict
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
+from leadforge_ui.state.auth import AuthState
 from database.sqlite_db import (
     get_all_leads,
     update_lead_stage,
@@ -168,7 +169,7 @@ def _update_lead(lead_id: int, data: dict):
     conn.close()
 
 
-class LeadsState(rx.State):
+class LeadsState(AuthState):
     """Full CRUD state for the Leads Management page."""
 
     leads: list[LeadDict] = []
@@ -213,7 +214,7 @@ class LeadsState(rx.State):
     # ── Load ───────────────────────────────────────────────────────────────────
 
     def load_leads(self):
-        raw = get_all_leads()
+        raw = get_all_leads(user_id=self.user_id)
         self.leads = [_normalize_lead(l) for l in raw]
         self._apply_filters()
 
@@ -488,7 +489,7 @@ class LeadsState(rx.State):
             text = content.decode("latin-1", errors="ignore")
 
         # Detect product_id
-        profile = get_company_profile()
+        profile = get_company_profile(self.user_id)
         product_id = None
         if profile:
             from database.sqlite_db import get_products

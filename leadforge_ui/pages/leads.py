@@ -2,6 +2,7 @@ import reflex as rx
 from leadforge_ui.components.layout import layout
 from leadforge_ui.components.tables import stage_badge, empty_state
 from leadforge_ui.state.auth import AuthState
+from leadforge_ui.state.base_state import AppState
 from leadforge_ui.state.leads_state import LeadsState
 from leadforge_ui.styles.theme import PRIMARY, PRIMARY_DARK, BORDER, CARD_STYLE, TD_STYLE
 
@@ -227,8 +228,7 @@ def edit_lead_modal() -> rx.Component:
                 on_submit=LeadsState.save_edit_lead,
                 width="100%",
             ),
-            max_width="640px",
-            padding="32px",
+            max_width="640px", width="100%", padding="24px",
         ),
         open=LeadsState.show_edit_modal,
         on_open_change=LeadsState.set_show_edit_modal,
@@ -483,7 +483,7 @@ def leads_content() -> rx.Component:
 
 @rx.page(
     route="/leads",
-    on_load=[AuthState.check_auth, LeadsState.load_leads],
+    on_load=[AuthState.check_auth, AppState.load_products, LeadsState.load_leads],
 )
 def leads():
     return layout(

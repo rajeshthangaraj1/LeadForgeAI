@@ -4,6 +4,7 @@ from typing import TypedDict
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
+from leadforge_ui.state.auth import AuthState
 from database.sqlite_db import (
     get_gmail_config,
     save_gmail_config,
@@ -26,7 +27,7 @@ class ProviderDict(TypedDict):
     description: str
 
 
-class SettingsState(rx.State):
+class SettingsState(AuthState):
     """Settings page — Gmail, Search Providers, Model config."""
 
     # ── Gmail ──────────────────────────────────────────────────────────────────
@@ -51,7 +52,7 @@ class SettingsState(rx.State):
 
     def load_settings(self):
         # Gmail
-        gc = get_gmail_config()
+        gc = get_gmail_config(self.user_id)
         if gc:
             self.gmail_email = gc.get("email") or ""
             self.gmail_password = gc.get("app_password") or ""
@@ -84,7 +85,7 @@ class SettingsState(rx.State):
         pwd = form_data.get("gmail_password", "").strip()
         if not email or not pwd:
             return rx.toast.error("Email and App Password are required.")
-        save_gmail_config(email, pwd)
+        save_gmail_config(email, pwd, user_id=self.user_id)
         self.gmail_email = email
         self.gmail_password = pwd
         return rx.toast.success("Gmail settings saved.")

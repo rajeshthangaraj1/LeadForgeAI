@@ -12,6 +12,7 @@ class AuthState(rx.State):
     username: str = ""
     full_name: str = ""
     user_role: str = ""
+    user_id: int = 0
     login_error: str = ""
     register_error: str = ""
     register_success: str = ""
@@ -31,6 +32,7 @@ class AuthState(rx.State):
             self.username = user["username"]
             self.full_name = user.get("full_name") or user["username"]
             self.user_role = user.get("role") or "user"
+            self.user_id = int(user.get("id") or 0)
             self.login_error = ""
             return rx.redirect("/dashboard")
         else:
@@ -68,6 +70,7 @@ class AuthState(rx.State):
         self.username = ""
         self.full_name = ""
         self.user_role = ""
+        self.user_id = 0
         return rx.redirect("/login")
 
     # ── Auth guard — call in on_load of every protected page ──────────────────

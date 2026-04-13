@@ -4,6 +4,7 @@ from typing import TypedDict
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
+from leadforge_ui.state.auth import AuthState
 from database.sqlite_db import (
     get_company_profile,
     save_company_profile,
@@ -110,7 +111,7 @@ def _normalize_template(t: dict) -> TemplateDict:
     }
 
 
-class MastersState(rx.State):
+class MastersState(AuthState):
     """CRUD state for Company Profile, Products, Target Audience, Email Templates."""
 
     # ── Company profile ────────────────────────────────────────────────────────
@@ -174,7 +175,7 @@ class MastersState(rx.State):
         self._load_country_sources()
 
     def _load_company(self):
-        profile = get_company_profile()
+        profile = get_company_profile(self.user_id)
         if profile:
             self.company_id = profile["id"]
             self.cp_company_name = profile.get("company_name") or ""
@@ -206,7 +207,7 @@ class MastersState(rx.State):
         self.ta_competitors = ""
 
     def _load_templates(self):
-        raw = get_email_templates()
+        raw = get_email_templates(self.user_id)
         self.templates = [_normalize_template(t) for t in raw]
 
     # ── Company profile save ───────────────────────────────────────────────────
@@ -217,7 +218,7 @@ class MastersState(rx.State):
             "industry": form_data.get("industry", ""),
             "website": form_data.get("website", ""),
             "description": form_data.get("description", ""),
-        })
+        }, user_id=self.user_id)
         self._load_company()
         return rx.toast.success("Company profile saved.")
 
@@ -360,7 +361,7 @@ class MastersState(rx.State):
         body = form_data.get("body", "").strip()
         if not name or not subject or not body:
             return rx.toast.error("All fields are required.")
-        save_email_template(name, subject, body)
+        save_email_template(name, subject, body, user_id=self.user_id)
         self.show_add_template_modal = False
         self._load_templates()
         return rx.toast.success("Template created.")

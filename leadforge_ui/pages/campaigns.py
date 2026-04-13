@@ -1,6 +1,7 @@
 import reflex as rx
 from leadforge_ui.components.layout import layout
 from leadforge_ui.state.auth import AuthState
+from leadforge_ui.state.base_state import AppState
 from leadforge_ui.state.campaigns_state import CampaignsState
 from leadforge_ui.styles.theme import PRIMARY, PRIMARY_DARK, BORDER, TD_STYLE
 
@@ -143,8 +144,7 @@ def create_campaign_modal() -> rx.Component:
                 on_submit=CampaignsState.create_campaign,
                 width="100%",
             ),
-            max_width="480px",
-            padding="32px",
+            max_width="480px", width="100%", padding="24px",
         ),
         open=CampaignsState.show_create_modal,
         on_open_change=CampaignsState.set_show_create_modal,
@@ -186,8 +186,7 @@ def edit_campaign_modal() -> rx.Component:
                 on_submit=CampaignsState.save_edit_campaign,
                 width="100%",
             ),
-            max_width="400px",
-            padding="28px",
+            max_width="400px", width="100%", padding="24px",
         ),
         open=CampaignsState.show_edit_modal,
         on_open_change=CampaignsState.set_show_edit_modal,
@@ -297,8 +296,7 @@ def stats_modal() -> rx.Component:
                 spacing="5",
                 width="100%",
             ),
-            max_width="640px",
-            padding="32px",
+            max_width="640px", width="100%", padding="24px",
         ),
         open=CampaignsState.show_stats_modal,
         on_open_change=CampaignsState.set_show_stats_modal,
@@ -367,7 +365,7 @@ def campaigns_content() -> rx.Component:
 
 @rx.page(
     route="/campaigns",
-    on_load=[AuthState.check_auth, CampaignsState.load_campaigns],
+    on_load=[AuthState.check_auth, AppState.load_products, CampaignsState.load_campaigns],
 )
 def campaigns():
     return layout(

@@ -4,7 +4,7 @@
 
 # ── Ollama ────────────────────────────────────
 OLLAMA_BASE_URL = "http://localhost:11434"
-OLLAMA_MODEL    = "qwen3:8b"   # ← change model here only
+OLLAMA_MODEL    = "mistral-small3.2:latest"   # ← change model here only
 
 # ── Per-agent LLM settings ────────────────────
 PLANNER_TEMPERATURE   = 0.2
@@ -28,5 +28,5 @@ MAX_PAGE_TEXT_CHARS   = 3000      # truncate scraped text to this length
 ENRICH_BATCH_SIZE     = 5         # leads per enrichment LLM call
 
 # ── App ───────────────────────────────────────
-APP_USERNAME = "admin"
-APP_PASSWORD = "admin"
+# Credentials are managed in the database (users table).
+# Default admin account is seeded by database/sqlite_db.py on first run.

@@ -9,6 +9,7 @@ from database.sqlite_db import (
     get_company_profile,
     get_products,
 )
+from leadforge_ui.state.auth import AuthState
 
 
 class ProductRef(TypedDict):
@@ -18,7 +19,7 @@ class ProductRef(TypedDict):
     created_at: str
 
 
-class AppState(rx.State):
+class AppState(AuthState):
     """Global shared state — company profile, product selector."""
 
     company_name: str = "LeadForge AI"
@@ -30,10 +31,10 @@ class AppState(rx.State):
 
     def on_app_load(self):
         init_db()
-        self._load_products()
+        self.load_products()
 
-    def _load_products(self):
-        profile = get_company_profile()
+    def load_products(self):
+        profile = get_company_profile(self.user_id)
         if profile:
             self.company_name = profile.get("company_name", "LeadForge AI")
             prods = get_products(profile["id"])

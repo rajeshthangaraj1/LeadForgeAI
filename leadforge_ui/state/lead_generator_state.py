@@ -4,6 +4,7 @@ from typing import TypedDict
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
+from leadforge_ui.state.auth import AuthState
 from database.sqlite_db import (
     get_products,
     get_company_profile,
@@ -53,7 +54,7 @@ def _normalize_run(r: dict) -> RecentRun:
     }
 
 
-class LeadGeneratorState(rx.State):
+class LeadGeneratorState(AuthState):
     """State for the Lead Generator page — pipeline runner + log viewer."""
 
     products: list[ProductRef] = []
@@ -76,7 +77,7 @@ class LeadGeneratorState(rx.State):
     # ── Load ───────────────────────────────────────────────────────────────────
 
     def load_page(self):
-        profile = get_company_profile()
+        profile = get_company_profile(self.user_id)
         if profile:
             raw = get_products(profile["id"])
             self.products = [
@@ -91,7 +92,7 @@ class LeadGeneratorState(rx.State):
             if self.products and not self.selected_product_id:
                 self.selected_product_id = self.products[0]["id"]
                 self.selected_product_name = self.products[0]["product_name"]
-        runs = get_agent_runs()
+        runs = get_agent_runs(user_id=self.user_id)
         self.recent_runs = [_normalize_run(r) for r in runs[:15]]
 
     # ── Controls ───────────────────────────────────────────────────────────────
@@ -126,6 +127,7 @@ class LeadGeneratorState(rx.State):
                 return
             product_id = self.selected_product_id
             mode = self.run_mode
+            _uid = self.user_id
             self.is_running = True
             self.run_logs = ["[LeadForge] Pipeline starting…"]
             self.run_result = {}
@@ -137,7 +139,7 @@ class LeadGeneratorState(rx.State):
 
             def _run():
                 from pipeline.run_pipeline import run_pipeline
-                return run_pipeline(product_id, mode)
+                return run_pipeline(product_id, mode, user_id=_uid)
 
             from concurrent.futures import ThreadPoolExecutor
             with ThreadPoolExecutor(max_workers=1) as executor:
@@ -145,7 +147,7 @@ class LeadGeneratorState(rx.State):
 
                 # Wait briefly then detect run_id from DB
                 await asyncio.sleep(2)
-                runs = get_agent_runs(product_id=product_id)
+                runs = get_agent_runs(product_id=product_id, user_id=_uid)
                 run_id = runs[0]["id"] if runs else 0
                 async with self:
                     self.current_run_id = run_id
@@ -166,7 +168,7 @@ class LeadGeneratorState(rx.State):
                 self.run_result = result or {}
                 final_run_id = result.get("run_id", run_id) if result else run_id
                 self.current_run_id = final_run_id
-                runs = get_agent_runs()
+                runs = get_agent_runs(user_id=_uid)
                 self.recent_runs = [_normalize_run(r) for r in runs[:15]]
                 logs = get_logs_for_run(final_run_id) if final_run_id else get_recent_logs(limit=200)
                 self.run_logs = [
@@ -198,7 +200,7 @@ class LeadGeneratorState(rx.State):
     def confirm_delete_run(self):
         delete_agent_run(self.delete_run_id)
         self.show_delete_run_confirm = False
-        runs = get_agent_runs()
+        runs = get_agent_runs(user_id=self.user_id)
         self.recent_runs = [_normalize_run(r) for r in runs[:15]]
         return rx.toast.success("Pipeline run deleted.")
 

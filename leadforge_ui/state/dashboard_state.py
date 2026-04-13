@@ -4,6 +4,7 @@ from typing import TypedDict
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
+from leadforge_ui.state.auth import AuthState
 from database.sqlite_db import (
     get_all_leads,
     get_agent_runs,
@@ -38,7 +39,7 @@ class RecentRun(TypedDict):
     notes: str
 
 
-class DashboardState(rx.State):
+class DashboardState(AuthState):
     """Metrics and chart data for the main dashboard."""
 
     # ── KPI cards ──────────────────────────────────────────────────────────────
@@ -70,14 +71,14 @@ class DashboardState(rx.State):
         self.loading = False
 
     def _compute_metrics(self):
-        leads = get_all_leads()
+        leads = get_all_leads(user_id=self.user_id)
 
         self.total_leads = len(leads)
         self.new_leads = sum(
             1 for l in leads if (l.get("stage") or "new").lower() == "new"
         )
 
-        sends = get_all_sends()
+        sends = get_all_sends(self.user_id)
         self.emails_sent = len(sends)
         self.replies = sum(
             1 for s in sends if s.get("status") in ("replied", "auto_reply")
@@ -107,7 +108,7 @@ class DashboardState(rx.State):
         ]
 
         # Campaign performance
-        campaigns = get_email_campaigns()
+        campaigns = get_email_campaigns(self.user_id)
         self.campaign_data = [
             {
                 "name": c.get("name") or "",
@@ -118,7 +119,7 @@ class DashboardState(rx.State):
         ]
 
         # Recent runs — normalize to match RecentRun TypedDict
-        runs = get_agent_runs()
+        runs = get_agent_runs(user_id=self.user_id)
         self.recent_runs = [
             {
                 "run_time": str(r.get("run_time") or ""),

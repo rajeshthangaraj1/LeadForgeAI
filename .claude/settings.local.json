@@ -9,7 +9,10 @@
       "Bash(curl -s http://localhost:11434/api/tags)",
       "Bash(curl:*)",
       "Bash(python3:*)",
-      "Bash(pip3 show:*)"
+      "Bash(pip3 show:*)",
+      "Bash(sqlite3:*)",
+      "Bash(mkdir -p /home/rmrobot/Desktop/Rajesh/LeadForgeAI/db)",
+      "Bash(mv /home/rmrobot/Desktop/Rajesh/LeadForgeAI/leadforge.db /home/rmrobot/Desktop/Rajesh/LeadForgeAI/db/leadforge.db)"
     ]
   }
 }
